@@ -10,6 +10,7 @@ from .paths import SETTINGS_FILE
 class Settings:
     theme: str = "system"  # system | light | dark
     shortcut_root: str = ""  # app folder the desktop shortcut was made for (Windows release)
+    guide_seen: bool = False  # setup guide opens by itself until closed once
     mode: str = "deep"  # deep | ai
 
     input_device: str = ""

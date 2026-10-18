@@ -29,6 +29,7 @@ from ..settings import Settings
 from ..voices import ai
 from ..voices.deep import PRESETS, DeepVoice
 from . import theme
+from .guide import SetupGuide
 from .widgets import Card, Meter, Segmented, SliderRow, Switch, labeled
 
 VB_CABLE_URL = "https://vb-audio.com/Cable/"
@@ -60,6 +61,7 @@ class MainWindow(QMainWindow):
         self.ai_key = None  # (voice, chunk, f0) it was loaded with
         self.loading = False
         self.test_clips = None
+        self.guide = None
         self.bridge = Bridge()
         self.bridge.voice_loaded.connect(self._on_voice_loaded)
         self.bridge.voice_failed.connect(self._on_voice_failed)
@@ -88,6 +90,8 @@ class MainWindow(QMainWindow):
 
         app.styleHints().colorSchemeChanged.connect(lambda _: self._apply_theme())
         threading.Thread(target=self._detect_compute, daemon=True).start()
+        if not self.s.guide_seen:
+            QTimer.singleShot(300, self._show_guide)
 
     # ---- layout ------------------------------------------------------------------
 
@@ -128,6 +132,11 @@ class MainWindow(QMainWindow):
         row.addWidget(logo)
         row.addWidget(title)
         row.addStretch()
+        guide = QPushButton("?  Setup", objectName="ghost")
+        guide.setCursor(Qt.PointingHandCursor)
+        guide.setToolTip("How to set up Undertone with Discord and games")
+        guide.clicked.connect(self._show_guide)
+        row.addWidget(guide)
         self.theme_btn = QPushButton(objectName="ghost")
         self.theme_btn.setCursor(Qt.PointingHandCursor)
         self.theme_btn.clicked.connect(self._cycle_theme)
@@ -489,6 +498,25 @@ class MainWindow(QMainWindow):
         for w in self.findChildren(QWidget):
             w.update()
         self._restyle(self.start_btn)
+        if self.guide is not None and not self.guide.isVisible():
+            self.guide.deleteLater()  # its link colours are baked in; rebuild next time
+            self.guide = None
+
+    def _show_guide(self):
+        if self.guide is None:
+            self.guide = SetupGuide(self)
+            self.guide.finished.connect(self._on_guide_closed)
+        else:
+            self.guide.refresh_cable_status()
+        self.guide.show()
+        self.guide.raise_()
+        self.guide.activateWindow()
+
+    def _on_guide_closed(self, _=None):
+        self._refresh_devices()  # in case VB-Cable was installed meanwhile
+        if not self.s.guide_seen:
+            self.s.guide_seen = True
+            self.s.save()
 
     def _update_theme_button(self):
         icon = {"system": "◐", "light": "☀", "dark": "☾"}[self.s.theme]

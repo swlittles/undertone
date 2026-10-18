@@ -18,7 +18,8 @@ A voice changer that tries to sound like a real person, not a filter. Two modes:
    SmartScreen warns you, click **More info → Run anyway**.
 4. Install the free [VB-Cable](https://vb-audio.com/Cable/) virtual audio cable and reboot.
    This is the "virtual microphone" that Discord and games listen to.
-5. In Undertone:
+5. In Undertone (the **Setup** guide in the app walks through this and opens by itself
+   the first time):
    - **Microphone**: your real mic.
    - **Send changed voice to**: `CABLE Input (VB-Audio Virtual Cable)`.
    - In Discord / your game, set the input device to `CABLE Output (VB-Audio Virtual Cable)`.

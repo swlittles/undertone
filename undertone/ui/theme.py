@@ -106,7 +106,7 @@ def stylesheet(p: Palette) -> str:
     font-size: 13px;
     color: {p.text};
 }}
-QMainWindow, QWidget#root, QScrollArea, QWidget#content {{
+QMainWindow, QDialog, QWidget#root, QScrollArea, QWidget#content {{
     background: {p.bg};
     border: none;
 }}

@@ -22,8 +22,9 @@ from PySide6.QtWidgets import (
 
 import sys
 
-from .. import runtime
+from .. import runtime, updater
 from ..audio import engine as audio
+from .. import __version__
 from ..paths import ROOT, VOICES
 from ..settings import Settings
 from ..voices import ai
@@ -44,6 +45,9 @@ class Bridge(QObject):
     download_progress = Signal(float, str)
     download_done = Signal(str)  # empty string on success, else error
     device_name = Signal(str)
+    update_found = Signal(object)  # updater.Release
+    update_progress = Signal(float, str)
+    update_done = Signal(str)  # empty string on success, else error
 
 
 def _db_to_lin(db: float) -> float:
@@ -67,6 +71,11 @@ class MainWindow(QMainWindow):
         self.bridge.voice_failed.connect(self._on_voice_failed)
         self.bridge.download_progress.connect(self._on_download_progress)
         self.bridge.download_done.connect(self._on_download_done)
+        self.bridge.update_found.connect(self._on_update_found)
+        self.bridge.update_progress.connect(self._on_update_progress)
+        self.bridge.update_done.connect(self._on_update_done)
+        self.update_release = None
+        self.restart_after_update = False
         self.bridge.device_name.connect(lambda n: self.ai_device.setText(f"Runs on: {n}"))
 
         self.save_timer = QTimer(self)
@@ -92,6 +101,14 @@ class MainWindow(QMainWindow):
         threading.Thread(target=self._detect_compute, daemon=True).start()
         if not self.s.guide_seen:
             QTimer.singleShot(300, self._show_guide)
+        if updater.supported():
+            if updater.staged_version():
+                self._show_update_ready(updater.staged_version())
+            else:
+                self.update_timer = QTimer(self)
+                self.update_timer.timeout.connect(self._check_for_update)
+                self.update_timer.start(6 * 3600 * 1000)  # for a PC that stays on
+                QTimer.singleShot(3000, self._check_for_update)
 
     # ---- layout ------------------------------------------------------------------
 
@@ -112,6 +129,7 @@ class MainWindow(QMainWindow):
         outer.addWidget(scroll, 1)
 
         col.addLayout(self._header())
+        col.addWidget(self._update_banner())
         col.addWidget(self._mode_card())
         col.addWidget(self._audio_card())
         col.addWidget(self._test_card())
@@ -142,6 +160,32 @@ class MainWindow(QMainWindow):
         self.theme_btn.clicked.connect(self._cycle_theme)
         row.addWidget(self.theme_btn)
         return row
+
+    def _update_banner(self):
+        self.upd_banner = QFrame(objectName="banner")
+        col = QVBoxLayout(self.upd_banner)
+        col.setContentsMargins(14, 12, 14, 12)
+        col.setSpacing(8)
+        row = QHBoxLayout()
+        self.upd_label = QLabel()
+        self.upd_label.setWordWrap(True)
+        self.upd_notes = QPushButton("What's new")
+        self.upd_notes.setCursor(Qt.PointingHandCursor)
+        self.upd_notes.clicked.connect(
+            lambda: QDesktopServices.openUrl(QUrl(self.update_release.page)) if self.update_release else None)
+        self.upd_btn = QPushButton("Update", objectName="accent")
+        self.upd_btn.setCursor(Qt.PointingHandCursor)
+        self.upd_btn.clicked.connect(self._update_clicked)
+        row.addWidget(self.upd_label, 1)
+        row.addWidget(self.upd_notes)
+        row.addWidget(self.upd_btn)
+        col.addLayout(row)
+        self.upd_progress = QProgressBar()
+        self.upd_progress.setRange(0, 1000)
+        self.upd_progress.hide()
+        col.addWidget(self.upd_progress)
+        self.upd_banner.hide()
+        return self.upd_banner
 
     def _mode_card(self):
         card = Card()
@@ -828,9 +872,78 @@ class MainWindow(QMainWindow):
             self.status.setObjectName(name)
             self._restyle(self.status)
 
+    # ---- updates ---------------------------------------------------------------------
+
+    def _check_for_update(self):
+        def work():
+            try:
+                rel = updater.check()
+            except Exception as e:
+                print(f"Update check failed: {e}", file=sys.stderr)
+                return
+            if rel:
+                self.bridge.update_found.emit(rel)
+
+        if not self.upd_progress.isVisible() and not updater.staged_version():
+            threading.Thread(target=work, daemon=True).start()
+
+    def _on_update_found(self, rel):
+        self.update_release = rel
+        self.upd_label.setText(f"Undertone {rel.version} is available. You're on {__version__}.")
+        self.upd_btn.setText("Update")
+        self.upd_btn.setEnabled(True)
+        self.upd_notes.show()
+        self.upd_banner.show()
+
+    def _update_clicked(self):
+        if updater.staged_version():
+            self.restart_after_update = True
+            self.close()
+            return
+        rel = self.update_release
+        self.upd_btn.setEnabled(False)
+        self.upd_progress.setValue(0)
+        self.upd_progress.show()
+
+        def work():
+            try:
+                updater.download(rel, self.bridge.update_progress.emit)
+                self.bridge.update_done.emit("")
+            except Exception as e:
+                traceback.print_exc()
+                self.bridge.update_done.emit(str(e))
+
+        threading.Thread(target=work, daemon=True).start()
+
+    def _on_update_progress(self, frac: float, label: str):
+        self.upd_progress.setValue(int(frac * 1000))
+        self.upd_label.setText(f"{label}… {frac * 100:.0f}%")
+
+    def _on_update_done(self, error: str):
+        self.upd_progress.hide()
+        if error:
+            self.upd_label.setText(f"Couldn't download the update: {error}")
+            self.upd_btn.setText("Try again")
+            self.upd_btn.setEnabled(True)
+            return
+        self._show_update_ready(self.update_release.version)
+
+    def _show_update_ready(self, version: str):
+        self.upd_label.setText(f"Undertone {version} is ready. Restart to finish, or it installs "
+                               "when you close Undertone.")
+        self.upd_btn.setText("Restart now")
+        self.upd_btn.setEnabled(True)
+        self.upd_notes.setVisible(self.update_release is not None)
+        self.upd_banner.show()
+
     def closeEvent(self, ev):
         self.engine.stop()
         audio.stop_playback()
         self.s.save()
+        if updater.supported() and updater.staged_version():
+            try:
+                updater.apply(restart=self.restart_after_update)
+            except Exception:
+                traceback.print_exc()
         super().closeEvent(ev)
 

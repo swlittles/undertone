@@ -34,6 +34,8 @@ jobs:
           # Keep the test run's downloads and settings out of the build.
           LOCALAPPDATA: ${{ runner.temp }}\local
           APPDATA: ${{ runner.temp }}\roaming
+          # The update test asks the GitHub API for the latest release; runners share its rate limit.
+          UNDERTONE_GITHUB_TOKEN: ${{ github.token }}
         run: ./scripts/test_windows.ps1
 
       - name: Zip

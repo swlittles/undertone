@@ -15,10 +15,11 @@ def _log_to_file():
 
 def main() -> int:
     _log_to_file()
-    from . import runtime
+    from . import runtime, updater
     from .paths import migrate_old_locations
 
     migrate_old_locations()
+    updater.clean_leftovers()
     runtime.activate()  # before anything imports torch
     if sys.platform == "win32":
         import ctypes

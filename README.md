@@ -25,9 +25,12 @@ A voice changer that tries to sound like a real person, not a filter. Two modes:
    - In Discord / your game, set the input device to `CABLE Output (VB-Audio Virtual Cable)`.
    - Press **Start**.
 
-To update, download the new zip, extract it and run **Undertone.bat** from the new
-folder. Settings, voices and downloads live in `%APPDATA%\Undertone` and
-`%LOCALAPPDATA%\Undertone`, so they carry over and you can delete the old folder.
+Undertone updates itself: when a new release is out, a banner offers **Update**, which
+downloads it in the background and installs it when you restart or close the app.
+Settings, voices and downloads live in `%APPDATA%\Undertone` and
+`%LOCALAPPDATA%\Undertone`, so updates never touch them. (Versions before 0.2.1 need
+one manual update: download the new zip, extract it and run **Undertone.bat** from the
+new folder; the desktop shortcut moves to it and you can delete the old folder.)
 
 If something goes wrong, run **Undertone (debug).bat** to see errors, or read
 `%APPDATA%\Undertone\undertone.log`.
@@ -89,6 +92,9 @@ Releases: push a tag matching `undertone/__init__.py`'s `__version__` (e.g. `v0.
 (`scripts/build_windows.ps1`: embeddable Python plus `requirements.txt`, no PyTorch),
 tests it (`scripts/test_windows.ps1`), and publishes the release. The app downloads
 PyTorch into `%LOCALAPPDATA%\Undertone\rt` on first use (`undertone/runtime.py`).
+Installed copies find the release through the GitHub API and update themselves
+(`undertone/updater.py`, `undertone/assets/apply_update.ps1`), so every release needs
+the `Undertone-<version>-windows.zip` asset the workflow uploads.
 
 Layout: `undertone/audio/engine.py` (devices, buffering, worker thread),
 `undertone/voices/deep.py` (Rubber Band pitch + formant), `undertone/voices/ai.py`

@@ -14,7 +14,7 @@ Deep voice works straight away. AI voice asks for a one-time download the first 
 
 ## Updating
 
-Download the new zip, extract it, and run **Undertone.bat** from the new folder. Your
-settings, voices and downloads are kept in `%LOCALAPPDATA%\Undertone` and
-`%APPDATA%\Undertone`, and the desktop shortcut moves to the new version, so you can
-delete the old folder.
+Undertone 0.2.1 and later update themselves: a banner in the app offers **Update** when a
+new version is out. From 0.2.0, download this zip once, extract it and run
+**Undertone.bat** from the new folder. Your settings, voices and downloads are kept, and
+the desktop shortcut moves to the new version, so you can delete the old folder.

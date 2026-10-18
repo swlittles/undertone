@@ -166,6 +166,9 @@ QPushButton#primary[live="true"] {{
 }}
 QPushButton#primary[live="true"]:hover {{ background: {p.border}; }}
 QPushButton#primary:disabled {{ background: {p.inset}; color: {p.muted}; }}
+QPushButton#accent {{ background: {p.accent}; border-color: {p.accent}; color: {p.on_accent}; font-weight: 600; }}
+QPushButton#accent:hover {{ background: {p.accent_hover}; }}
+QPushButton#accent:disabled {{ background: {p.inset}; border-color: {p.border}; color: {p.muted}; }}
 
 QPushButton#ghost {{
     background: transparent; border: none; padding: 6px 8px; border-radius: 8px; font-size: 16px;

@@ -1,8 +1,8 @@
 ## Install on Windows
 
 1. Download **Undertone-…-windows.zip** below.
-2. Right-click it, choose **Extract All…**, and put the folder anywhere (e.g. Documents).
-   Don't run it from inside the zip.
+2. Right-click it and choose **Extract All…**. Keep the folder somewhere short, like
+   Downloads or Documents, and don't run it from inside the zip.
 3. Open the folder and double-click **Undertone.bat**. If Windows SmartScreen warns
    you, click **More info → Run anyway**. The first launch puts an **Undertone**
    shortcut on your desktop.

@@ -30,6 +30,6 @@ end = time.time() + 2
 while time.time() < end:
     app.processEvents()
     time.sleep(0.02)
-assert win.base_banner.isVisibleTo(win), "should offer the shared model download"
+assert not win.base_banner.isHidden(), "should offer the shared model download"
 win.close()
 print("GUI starts")

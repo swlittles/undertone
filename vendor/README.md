@@ -10,6 +10,7 @@ Local changes:
 - `rvc/lib/predictors/Swift.py`: `onnxruntime` is imported when the SWIFT predictor
   is used instead of at module load, so it isn't a hard dependency.
 
-Shared models (`rvc/models/`) are downloaded by the app on first use and aren't committed.
-Applio resolves paths relative to the working directory, so Undertone changes into this
-folder before loading the engine (`undertone/voices/ai.py`).
+Applio opens its shared models as `rvc/models/...` relative to the working directory.
+Undertone downloads them to `<local app data>/Undertone/engine/rvc/models/` and changes
+into that folder before loading the engine (`undertone/voices/ai.py`), with this folder
+on `sys.path` for the code.

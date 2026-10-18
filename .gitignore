@@ -4,7 +4,9 @@ __pycache__/
 .pytest_cache/
 .DS_Store
 
-# Downloaded at runtime
+# Release build output
+dist/
+
+# Older versions downloaded models and voices here (now in %LOCALAPPDATA%\Undertone)
 vendor/rvc/models/
-voices/*
-!voices/README.md
+voices/

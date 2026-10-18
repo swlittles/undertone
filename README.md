@@ -10,24 +10,34 @@ A voice changer that tries to sound like a real person, not a filter. Two modes:
 
 ## Windows setup
 
-1. Install [Git](https://git-scm.com/download/win) if you don't have it, then:
-   ```powershell
-   git clone https://github.com/swlittles/undertone.git
-   cd undertone
-   ```
-2. Double-click **install.bat**. It installs Python 3.12 if needed (via winget), PyTorch
-   (CUDA build if it finds an NVIDIA GPU, about 3 GB) and everything else, then puts an
-   **Undertone** shortcut on your desktop.
-3. Install the free [VB-Cable](https://vb-audio.com/Cable/) virtual audio cable and reboot.
+1. Download the latest **Undertone-…-windows.zip** from
+   [Releases](https://github.com/swlittles/undertone/releases).
+2. Right-click it, choose **Extract All…**, and open the extracted folder.
+3. Double-click **Undertone.bat**. It has its own Python, so there's nothing else to
+   install. The first launch puts an **Undertone** shortcut on your desktop. If
+   SmartScreen warns you, click **More info → Run anyway**.
+4. Install the free [VB-Cable](https://vb-audio.com/Cable/) virtual audio cable and reboot.
    This is the "virtual microphone" that Discord and games listen to.
-4. Open Undertone:
+5. In Undertone:
    - **Microphone**: your real mic.
    - **Send changed voice to**: `CABLE Input (VB-Audio Virtual Cable)`.
    - In Discord / your game, set the input device to `CABLE Output (VB-Audio Virtual Cable)`.
    - Press **Start**.
 
-To update later: double-click **update.bat**. If something goes wrong, run
-**Undertone (debug).bat** to see errors, or read `%APPDATA%\Undertone\undertone.log`.
+To update, download the new zip, extract it and run **Undertone.bat** from the new
+folder. Settings, voices and downloads live in `%APPDATA%\Undertone` and
+`%LOCALAPPDATA%\Undertone`, so they carry over and you can delete the old folder.
+
+If something goes wrong, run **Undertone (debug).bat** to see errors, or read
+`%APPDATA%\Undertone\undertone.log`.
+
+<details>
+<summary>Running from a git checkout instead</summary>
+
+`git clone https://github.com/swlittles/undertone.git`, then double-click
+**install.bat** (installs Python 3.12 via winget if needed, PyTorch and everything
+else into `.venv`). **update.bat** pulls the latest code.
+</details>
 
 ## Trying the two modes
 
@@ -41,7 +51,8 @@ less, not more: real deep voices get most of their depth from pitch. **Warmth** 
 low-end body.
 
 ### AI voice
-1. Click **Download** in the AI voice panel once (about 600 MB of shared models).
+1. Click **Download** in the AI voice panel once. On the release build that's the AI
+   engine (PyTorch, about 2.6 GB for NVIDIA GPUs) plus 600 MB of shared models.
 2. Click **Add voice…** and pick a voice model: an RVC v2 `.pth` file, or a `.zip`
    containing one (and ideally its `.index` file). Pick a voice you have permission to
    use. Many free models are of real people, so look for an original voice, or train
@@ -71,6 +82,12 @@ instead of VB-Cable. AI voice runs on the Apple GPU but is slower than on an NVI
 .venv/bin/python -m pytest          # unit tests
 UNDERTONE_TEST_VOICE=/path/to/voice.pth .venv/bin/python -m pytest tests/test_ai.py
 ```
+
+Releases: push a tag matching `undertone/__init__.py`'s `__version__` (e.g. `v0.2.0`).
+`.github/workflows/release.yml` builds the portable zip on Windows
+(`scripts/build_windows.ps1`: embeddable Python plus `requirements.txt`, no PyTorch),
+tests it (`scripts/test_windows.ps1`), and publishes the release. The app downloads
+PyTorch into `%LOCALAPPDATA%\Undertone\rt` on first use (`undertone/runtime.py`).
 
 Layout: `undertone/audio/engine.py` (devices, buffering, worker thread),
 `undertone/voices/deep.py` (Rubber Band pitch + formant), `undertone/voices/ai.py`

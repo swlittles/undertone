@@ -15,7 +15,7 @@ from typing import Callable, Optional
 import numpy as np
 
 from ..audio.engine import SR
-from ..paths import BASE_MODELS, VENDOR, VOICES, data_dir
+from ..paths import BASE_MODELS, ENGINE_DIR, VENDOR, VOICES, data_dir
 
 _HF = "https://huggingface.co/IAHispano/Applio/resolve/main/Resources"
 BASE_FILES = [
@@ -60,7 +60,7 @@ def download_base_models(progress: Callable[[float, str], None]) -> None:
 
 def list_voices() -> list[str]:
     """Voice models (.pth) under voices/, as paths relative to that folder."""
-    VOICES.mkdir(exist_ok=True)
+    VOICES.mkdir(parents=True, exist_ok=True)
     return sorted(
         str(p.relative_to(VOICES)).replace("\\", "/")
         for p in VOICES.rglob("*.pth")
@@ -91,7 +91,7 @@ def import_voice(src: str) -> str:
     import shutil
 
     src_path = Path(src)
-    VOICES.mkdir(exist_ok=True)
+    VOICES.mkdir(parents=True, exist_ok=True)
     if src_path.suffix.lower() == ".zip":
         dest = VOICES / src_path.stem
         dest.mkdir(exist_ok=True)
@@ -123,10 +123,11 @@ _import_lock = threading.Lock()
 
 
 def _import_applio():
-    """Applio resolves model paths relative to the working directory."""
+    """Applio resolves model paths (rvc/models/...) relative to the working directory."""
     with _import_lock:
         os.environ.setdefault("APPLIO_CONFIG_DIR", str(data_dir() / "applio"))
-        os.chdir(VENDOR)
+        ENGINE_DIR.mkdir(parents=True, exist_ok=True)
+        os.chdir(ENGINE_DIR)
         if str(VENDOR) not in sys.path:
             sys.path.insert(0, str(VENDOR))
         import warnings

@@ -9,6 +9,7 @@ from .paths import SETTINGS_FILE
 @dataclass
 class Settings:
     theme: str = "system"  # system | light | dark
+    shortcut_root: str = ""  # app folder the desktop shortcut was made for (Windows release)
     mode: str = "deep"  # deep | ai
 
     input_device: str = ""
@@ -25,7 +26,7 @@ class Settings:
     deep_warmth: float = 2.0  # dB of low-shelf boost
 
     # AI voice
-    ai_voice: str = ""  # file name of a .pth in voices/
+    ai_voice: str = ""  # path of a .pth relative to the voices folder
     ai_pitch: int = 0  # semitones
     ai_index_rate: float = 0.5
     ai_protect: float = 0.33

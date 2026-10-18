@@ -1,0 +1,65 @@
+name: Windows release
+
+# Push a tag like v0.2.0 to build, test and publish a release. Running it by
+# hand builds and tests without publishing (the zip is kept as an artifact).
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check the version
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        run: |
+          $v = (Select-String -Path undertone/__init__.py -Pattern '__version__ = "(.+)"').Matches[0].Groups[1].Value
+          if ("v$v" -ne "${{ github.ref_name }}") { throw "Tag ${{ github.ref_name }} doesn't match __version__ $v" }
+
+      - name: Build
+        shell: pwsh
+        run: ./scripts/build_windows.ps1
+
+      - name: Test
+        shell: pwsh
+        env:
+          # Keep the test run's downloads and settings out of the build.
+          LOCALAPPDATA: ${{ runner.temp }}\local
+          APPDATA: ${{ runner.temp }}\roaming
+        run: ./scripts/test_windows.ps1
+
+      - name: Zip
+        id: zip
+        shell: pwsh
+        run: |
+          $v = (Select-String -Path undertone/__init__.py -Pattern '__version__ = "(.+)"').Matches[0].Groups[1].Value
+          $name = "Undertone-$v-windows.zip"
+          Push-Location dist
+          7z a -tzip -mx=5 $name Undertone | Out-Null
+          if ($LASTEXITCODE) { throw "7z failed" }
+          Pop-Location
+          "{0:N0} MB" -f ((Get-Item "dist/$name").Length / 1MB)
+          "name=$name" >> $env:GITHUB_OUTPUT
+
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "${{ github.ref_name }}" "dist/${{ steps.zip.outputs.name }}" --title "Undertone ${{ github.ref_name }}" --notes-file scripts/release-notes.md
+
+      - name: Keep the zip
+        if: "!startsWith(github.ref, 'refs/tags/')"
+        uses: actions/upload-artifact@v4
+        with:
+          name: undertone-windows
+          path: dist/${{ steps.zip.outputs.name }}
+          retention-days: 7

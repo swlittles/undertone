@@ -20,6 +20,9 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+import sys
+
+from .. import runtime
 from ..audio import engine as audio
 from ..paths import ROOT, VOICES
 from ..settings import Settings
@@ -215,7 +218,7 @@ class MainWindow(QMainWindow):
         folder = QPushButton("Folder")
         folder.setToolTip("Open the voices folder")
         folder.setCursor(Qt.PointingHandCursor)
-        folder.clicked.connect(lambda: QDesktopServices.openUrl(QUrl.fromLocalFile(str(VOICES))))
+        folder.clicked.connect(self._open_voices_folder)
         vrow.addWidget(self.voice_combo, 1)
         vrow.addWidget(add)
         vrow.addWidget(folder)
@@ -435,15 +438,41 @@ class MainWindow(QMainWindow):
         self.ai_index.setEnabled(has)
         self.ai_index.setToolTip("" if has else "This voice has no .index file, so this setting does nothing.")
 
+    def _open_voices_folder(self):
+        VOICES.mkdir(parents=True, exist_ok=True)
+        QDesktopServices.openUrl(QUrl.fromLocalFile(str(VOICES)))
+
+    def _engine_flavor(self):
+        """PyTorch build to download, or None if it's already there."""
+        return None if runtime.torch_ready() else runtime.recommended_flavor()
+
+    def _ai_ready(self) -> bool:
+        return runtime.torch_ready() and not ai.missing_base_models()
+
     def _update_base_model_banner(self):
+        flavor = self._engine_flavor()
         missing = ai.missing_base_models()
-        if not missing:
+        if not flavor and not missing:
             self.base_banner.hide()
             return
+        if flavor and sys.platform != "win32":
+            self.base_label.setText("PyTorch isn't installed. Run install.sh again, then restart Undertone.")
+            self.base_btn.hide()
+            self.base_banner.show()
+            return
         mb = sum(m for _, _, m in missing)
-        self.base_label.setText(f"AI voice needs a one-time download of shared models (about {mb} MB): "
-                                "speech features and pitch tracking.")
-        self.base_btn.setText(f"Download {mb} MB")
+        parts = []
+        if flavor:
+            mb += runtime.download_size_mb(flavor)
+            parts.append("the AI engine for your NVIDIA GPU" if flavor == "cu128"
+                         else "the AI engine (no NVIDIA GPU found, so it will run on the CPU and may be too slow)")
+        if missing:
+            parts.append("shared speech and pitch models")
+        size = f"{mb / 1024:.1f} GB" if mb >= 1024 else f"{mb} MB"
+        self.base_label.setText(f"AI voice needs a one-time download of {' and '.join(parts)} (about {size}). "
+                                "Deep voice works without it.")
+        self.base_btn.setText(f"Download {size}")
+        self.base_btn.show()
         self.base_banner.show()
 
     # ---- theme -----------------------------------------------------------------------
@@ -594,8 +623,8 @@ class MainWindow(QMainWindow):
             self.deep.set_params(self.s.deep_pitch, self.s.deep_formant, self.s.deep_warmth)
             self._start_engine(self.deep)
             return
-        if ai.missing_base_models():
-            self._set_status("Download the shared AI models first (button above).", error=True)
+        if not self._ai_ready():
+            self._set_status("Finish the AI voice download first (button above).", error=True)
             self.mode_seg.set_index(1)
             return
         if not self.s.ai_voice:
@@ -635,6 +664,8 @@ class MainWindow(QMainWindow):
         self.loading = False
         self.start_btn.setEnabled(True)
         self._set_live_ui(self.engine.running)
+        if "WinError 126" in msg or "DLL load failed" in msg:
+            msg += " — installing the Microsoft Visual C++ Redistributable (x64) usually fixes this"
         self._set_status(f"Couldn't load the voice: {msg}", error=True)
 
     def _start_engine(self, processor):
@@ -663,9 +694,19 @@ class MainWindow(QMainWindow):
         self.base_btn.setEnabled(False)
         self.base_progress.show()
 
+        flavor = self._engine_flavor()
+        emit = self.bridge.download_progress.emit
+
         def work():
             try:
-                ai.download_base_models(lambda f, label: self.bridge.download_progress.emit(f, label))
+                if flavor:
+                    # Weight the bar by size so it moves at a steady pace.
+                    share = runtime.download_size_mb(flavor) / (
+                        runtime.download_size_mb(flavor) + sum(m for _, _, m in ai.missing_base_models()))
+                    runtime.install(flavor, lambda f, label: emit(f * share, label))
+                else:
+                    share = 0.0
+                ai.download_base_models(lambda f, label: emit(share + f * (1 - share), label))
                 self.bridge.download_done.emit("")
             except Exception as e:
                 self.bridge.download_done.emit(f"{type(e).__name__}: {e}")
@@ -683,9 +724,13 @@ class MainWindow(QMainWindow):
             self.base_label.setText(f"Download failed: {err}. Check your connection and try again.")
             return
         self._update_base_model_banner()
-        self._set_status("Shared AI models downloaded.")
+        self._set_status("AI voice is ready." if ai.list_voices() else "AI voice is ready. Add a voice model to use it.")
+        threading.Thread(target=self._detect_compute, daemon=True).start()
 
     def _detect_compute(self):
+        if not runtime.torch_ready():
+            self.bridge.device_name.emit("not set up yet")
+            return
         try:
             self.bridge.device_name.emit(ai.compute_device())
         except Exception as e:

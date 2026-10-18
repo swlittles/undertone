@@ -15,6 +15,11 @@ def _log_to_file():
 
 def main() -> int:
     _log_to_file()
+    from . import runtime
+    from .paths import migrate_old_locations
+
+    migrate_old_locations()
+    runtime.activate()  # before anything imports torch
     if sys.platform == "win32":
         import ctypes
 
@@ -25,6 +30,11 @@ def main() -> int:
 
     from .paths import ROOT
     from .ui.window import MainWindow
+
+    from .settings import Settings
+    from .shortcut import ensure_desktop_shortcut
+
+    ensure_desktop_shortcut(Settings.load())
 
     app = QApplication(sys.argv)
     app.setApplicationName("Undertone")

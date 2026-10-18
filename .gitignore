@@ -1,4 +1,10 @@
 .venv/
-out/
-*.wav
+__pycache__/
+*.pyc
+.pytest_cache/
 .DS_Store
+
+# Downloaded at runtime
+vendor/rvc/models/
+voices/*
+!voices/README.md

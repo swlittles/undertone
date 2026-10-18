@@ -1,5 +1,18 @@
-numpy>=2.0
-soundfile>=0.12
-sounddevice>=0.5
-pyworld==0.3.5
-setuptools<81  # pyworld still imports pkg_resources
+# PyTorch is installed separately by install.bat / install.sh (CUDA build on NVIDIA GPUs).
+PySide6-Essentials==6.12.0
+numpy==2.5.4
+scipy==1.18.1
+sounddevice==0.5.6
+soundfile==0.14.0
+pylibrb==0.1.2
+requests==2.34.2
+
+# AI voice (Applio RVC engine in vendor/)
+librosa==1.0.0
+soxr==1.1.0
+faiss-cpu==1.15.1
+transformers==5.13.1
+torchcrepe==0.0.24
+torchfcpe==0.0.4
+einops==0.8.2
+webrtcvad-wheels==2.0.14.post1
